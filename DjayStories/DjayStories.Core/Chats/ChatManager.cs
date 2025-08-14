@@ -99,6 +99,12 @@ public class ChatManager
         }
     }
 
+    public async Task<List<Conversation>> GetConversationsAsync()
+    {
+        using var context = new ChatContext(_contextOptions);
+        return await context.Conversations.ToListAsync();
+    }
+
     // Get messages for a conversation
     public async Task<List<Message>> GetMessagesAsync(int conversationId, int limit = 50)
     {

@@ -25,7 +25,7 @@ public class TimedHostedService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        // Runs every 5 seconds
+        // Runs every 10 seconds
         _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
         return Task.CompletedTask;
     }
@@ -37,90 +37,93 @@ public class TimedHostedService : IHostedService, IDisposable
         var gameManager = scope.ServiceProvider.GetRequiredService<GameManager>();
         var chatManager = scope.ServiceProvider.GetRequiredService<ChatManager>();
 
-        var messages = await chatManager.GetMessagesAsync(1);
 
-        var players = await gameManager.GetPlayersByGameAsync(1);
-        var game = await gameManager.GetGameAsync(1);
+        var allConversations = await chatManager.GetConversationsAsync();
 
-        if (!messages.Any())
+
+        foreach ( var conversation in allConversations )
         {
-            return;
-        }
+            var messages = await chatManager.GetMessagesAsync(conversation.ConversationId);
 
-        var lastPlayerId = messages.First().SenderId;
-        var lastPlayer = players.First(_ => _.UserId == lastPlayerId);
-        if (!lastPlayer.IsReal)
-        {
-            return;
-        }
+            var players = await gameManager.GetPlayersByGameAsync(conversation.ConversationId);
+            var game = await gameManager.GetGameAsync(conversation.ConversationId);
 
-        foreach (var currentPlayer in players
-            .Where(_ => !_.IsReal))
-        {
-            var availablePlayersName = players
-                .Where(_ => _.Id != currentPlayer.Id)
-                .Select(_ => _.Name.ToUpperInvariant())
-                .ToArray();
-
-            var resquest =  @$"
-Ты играешь роль в {game.Name} и твоё имя в пьесе {currentPlayer.Name}.
-Твоя цель: {currentPlayer.Role.Target}.
-Твое описание которому ты ДОЛЖЕН соответсвовать: {currentPlayer.Role.HowHeFeels}
-Контекст пьесы в которой ты играешь: {game.Context}
-
-Формат ответа строг JSON следующего формата:
-{{
-    Target : ""<UserName>"", -- Здесь  <UserName> Здесь должно быть User Name того, к кому ты обращаешься.
-    Speach : ""<Speach>"", -- Здесь <Speach> должна быть твоя речь, что ты говоришь
-    Action : ""<Action>"", -- Здесь <Action> должно быть описание твоих действий, движений, мыслей. В третьем лице единственного числа.
-}}
-
-Если НЕ хочешь отвечать никому то значение должно быть : SKIP
-<UserName>: В верхнем регистре, без пробелов, допустимые значения: EVERYONE, SKIP, {string.Join(",", availablePlayersName)}. 
-Если хочешь ответить всем то значение должно быть : EVERYONE
-Если НЕ хочешь отвечать никому то значение должно быть : SKIP
-";
-
-            var chatMessages = new List<ChatMessage>
+            if (!messages.Any())
             {
-                ChatMessage.FromSystem(resquest)
-            };
-
-            foreach (var message in messages.OrderBy(_ => _.SentAt))
-            {
-                if (message.SenderId == currentPlayer.UserId)
-                {
-                    chatMessages.Add(ChatMessage.FromAssistant(message.Content));
-                }
-                else
-                {
-                    var player = players.First(_ => _.UserId == message.SenderId);
-                    chatMessages.Add(ChatMessage.FromUser($"{player.Name}: {message.Content}"));
-                }
+                continue;
             }
 
-
-            var completionResult = await openAIService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
+            var lastPlayerId = messages.First().SenderId;
+            var lastPlayer = players.First(_ => _.UserId == lastPlayerId);
+            if (!lastPlayer.IsReal)
             {
-                Messages = chatMessages,
+                continue;
+            }
 
-                Model = Models.Gpt_4o_mini,
-
-            });
-
-            if (completionResult.Successful)
+            foreach (var currentPlayer in players
+                .Where(_ => !_.IsReal))
             {
-                var sd = completionResult.Choices.First();
-                var content = sd.Message.Content?.Replace("```json", string.Empty).Replace("```", string.Empty);
-                
+                var availablePlayersName = players
+                    .Where(_ => _.Id != currentPlayer.Id)
+                    .Select(_ => _.Name.ToUpperInvariant())
+                    .ToArray();
 
-                var result = JsonSerializer.Deserialize<Responce>(content, _options);
-                var target = players.FirstOrDefault(_ => string.Equals(_.Name, result.Target, StringComparison.InvariantCultureIgnoreCase));
-                await chatManager.SendMessageAsync(1, currentPlayer.UserId, target?.UserId, result.Speach, result.Action);
+                var resquest =  @$"
+    Ты играешь роль в {game.Name} и твоё имя в пьесе {currentPlayer.Name}.
+    Твоя цель: {currentPlayer.Role.Target}.
+    Твое описание которому ты ДОЛЖЕН соответсвовать: {currentPlayer.Role.HowHeFeels}
+    Контекст пьесы в которой ты играешь: {game.Context}
+
+    ТРЕБУЕМЫЙ Формат ответа строго JSON следующего формата:
+    {{
+        Target : ""<UserName>"", -- Здесь  <UserName> Здесь должно быть User Name того, к кому ты обращаешься.
+        Speach : ""<Speach>"", -- Здесь <Speach> должна быть твоя речь, что ты говоришь
+        Action : ""<Action>"", -- Здесь <Action> должно быть описание твоих действий, движений, мыслей. В третьем лице единственного числа.
+    }}
+
+    Если НЕ хочешь отвечать никому то значение должно быть : SKIP
+    <UserName>: В верхнем регистре, без пробелов, допустимые значения: EVERYONE, SKIP, {string.Join(",", availablePlayersName)}. 
+    Если хочешь ответить всем то значение должно быть : EVERYONE
+    Если НЕ хочешь отвечать никому то значение должно быть : SKIP
+
+    Всегда проверяй, что ответ именно JSON!
+    ";
+
+                var chatMessages = new List<ChatMessage>
+                {
+                    ChatMessage.FromSystem(resquest)
+                };
+
+                foreach (var message in messages.OrderBy(_ => _.SentAt))
+                {
+                    if (message.SenderId == currentPlayer.UserId)
+                    {
+                        chatMessages.Add(ChatMessage.FromAssistant(message.Content));
+                    }
+                    else
+                    {
+                        var player = players.First(_ => _.UserId == message.SenderId);
+                        chatMessages.Add(ChatMessage.FromUser($"{player.Name}: {message.Content}"));
+                    }
+                }
+
+                var completionResult = await openAIService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
+                {
+                    Messages = chatMessages,
+                    Model = Models.Gpt_4o_mini,
+                });
+
+                if (completionResult.Successful)
+                {
+                    var sd = completionResult.Choices.First();
+                    var content = sd.Message.Content?.Replace("```json", string.Empty).Replace("```", string.Empty);
+
+                    var result = JsonSerializer.Deserialize<Responce>(content, _options);
+                    var target = players.FirstOrDefault(_ => string.Equals(_.Name, result.Target, StringComparison.InvariantCultureIgnoreCase));
+                    await chatManager.SendMessageAsync(conversation.ConversationId, currentPlayer.UserId, target?.UserId, result.Speach, result.Action);
+                }
             }
         }
-
-
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

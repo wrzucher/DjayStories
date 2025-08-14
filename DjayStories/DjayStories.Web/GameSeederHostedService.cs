@@ -17,7 +17,14 @@ public class GameSeederHostedService : IHostedService
         var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
 
         await context.Database.EnsureCreatedAsync(cancellationToken);
+        await LoadLoveGame(context, cancellationToken);
+        await LoadGoatGame(context, cancellationToken);
 
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task LoadLoveGame(GameDbContext context, CancellationToken cancellationToken)
+    {
         var role1 = context.Roles.Add(new Role()
         {
             Name = "Соблазнитель",
@@ -51,7 +58,7 @@ public class GameSeederHostedService : IHostedService
             GameId = 1,
         });
 
-        var player2= context.Players.Add(new Player()
+        var player2 = context.Players.Add(new Player()
         {
             Id = 2,
             IsReal = false,
@@ -77,8 +84,69 @@ public class GameSeederHostedService : IHostedService
             Name = "Чат",
             Context = "Чат где-то в интернете где все друг с другом общаются",
         });
+    }
+
+    private static async Task LoadGoatGame(GameDbContext context, CancellationToken cancellationToken)
+    {
+        var role1 = context.Roles.Add(new Role()
+        {
+            Name = "Наивный козлёнок",
+            HowHeFeels = "Ты играешь наивного козлёнка, склонного всем верить.",
+            Target = "Открыть дверь только матери"
+        });
+
+        var role2 = context.Roles.Add(new Role()
+        {
+            Name = "Умный козлёнок",
+            HowHeFeels = "Ты достаточно умный козлёнок для своих лет",
+            Target = "Открыть дверь только матери",
+        });
+
+        var role3 = context.Roles.Add(new Role()
+        {
+            Name = "Волк",
+            HowHeFeels = ".",
+            Target = "Съесть козлят",
+        });
 
         await context.SaveChangesAsync(cancellationToken);
+
+        var player1 = context.Players.Add(new Player()
+        {
+            Id = 4,
+            IsReal = false,
+            RoleId = role1.Entity.Id,
+            Name = "Лупа",
+            UserId = Guid.Parse("f13a9f52-3b5f-4e9b-8a2c-f5a5b1e9c471"),
+            GameId = 2,
+        });
+
+        var player2 = context.Players.Add(new Player()
+        {
+            Id = 5,
+            IsReal = false,
+            Name = "Пупа",
+            RoleId = role2.Entity.Id,
+            UserId = Guid.Parse("31dcbf0f-7a97-4bb7-a14c-21e709ff62a9"),
+            GameId = 2,
+        });
+
+        var player3 = context.Players.Add(new Player()
+        {
+            Id = 6,
+            IsReal = true,
+            Name = "Чипи",
+            RoleId = role3.Entity.Id,
+            UserId = Guid.Parse("e203a8b7-3db7-42de-912c-7409ae88e4b0"),
+            GameId = 2,
+        });
+
+        context.Games.Add(new Game()
+        {
+            Id = 2,
+            Name = "Сказка",
+            Context = "Мама козлят ушла из дома и сказала, чтоб козлята открыли дверь только ей",
+        });
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
