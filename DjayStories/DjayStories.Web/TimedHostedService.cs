@@ -85,8 +85,6 @@ public class TimedHostedService : IHostedService, IDisposable
     <UserName>: В верхнем регистре, без пробелов, допустимые значения: EVERYONE, SKIP, {string.Join(",", availablePlayersName)}. 
     Если хочешь ответить всем то значение должно быть : EVERYONE
     Если НЕ хочешь отвечать никому то значение должно быть : SKIP
-
-    Всегда проверяй, что ответ именно JSON!
     ";
 
                 var chatMessages = new List<ChatMessage>
@@ -106,6 +104,8 @@ public class TimedHostedService : IHostedService, IDisposable
                         chatMessages.Add(ChatMessage.FromUser($"{player.Name}: {message.Content}"));
                     }
                 }
+
+                chatMessages.Add(ChatMessage.FromSystem("Всегда проверяй, что ответ именно JSON требуемого формата!"));
 
                 var completionResult = await openAIService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
                 {
