@@ -1,0 +1,130 @@
+﻿@page "/chats/{ConversationId:int}"
+@inject IChatService ChatService
+@inject GameManager gameManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@implements IDisposable
+
+@using System.Timers
+
+<div class="container py-4">
+    <h3>Chat</h3>
+
+    <div class="card shadow-sm">
+        <div class="card-body overflow-auto" style="height: 400px;">
+            @if (IsLoading)
+            {
+                <div class="text-muted">Loading messages...</div>
+            }
+            else if (!Messages.Any())
+            {
+                <div class="text-muted">No messages yet.</div>
+            }
+            else
+            {
+                foreach (var msg in Messages.OrderBy(m => m.SentAt))
+                {
+                    <div class="mb-2">
+                        <div>
+                            <span class="badge text-bg-primary" @onclick="@(_ => SelectUser(msg.SenderId))">
+                                @GetPlayerName(msg.SenderId)
+                            </span>
+                            <span class="badge text-bg-info">
+                                @{
+                                    if (msg.ReceiverId != null)
+                                    {
+                                        <text>@GetPlayerName(msg.ReceiverId)</text>
+                                    }
+                                }
+                            </span>
+
+                            <small class="text-muted">@msg.SentAt.ToLocalTime().ToShortTimeString()</small>
+                        </div>
+                        <div>@msg.Content</div>
+                        @if (!string.IsNullOrEmpty(msg.Action))
+                        {
+                            <div class="text-info">@msg.Action</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="card-footer">
+            <form @onsubmit="SendMessageAsync">
+                <div class="mb-3">
+                    <div class="form-text text-muted mb-1" @onclick=@(_ => SelectUser(null))>
+                        @if (this.SelectedUserId is not null)
+                        {
+                            <text>Отправляется: <span class="badge text-bg-info">@GetPlayerName(this.SelectedUserId)</span></text>
+                        }
+                    </div>
+                <div class="input-group">
+                    <input type="text" class="form-control" @bind="NewMessage" placeholder="Type a message..." />
+                    <button class="btn btn-primary" type="submit">Send</button>
+                </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int ConversationId { get; set; }
+    private List<Message> Messages = new();
+    private List<Player> Players = new();
+    private string NewMessage = "";
+    private Guid CurrentUserId = Guid.Parse("e203a8b7-3db7-42de-912c-7409ae88e4b0"); // Set from auth/session in real app
+    private Guid? SelectedUserId;
+
+    private bool IsLoading = true;
+    private Timer? RefreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Players = await gameManager.GetPlayersByGameAsync(ConversationId);
+
+        await LoadMessages();
+        StartAutoRefresh();
+    }
+
+    private async Task LoadMessages()
+    {
+        Messages = await ChatService.GetMessagesAsync(ConversationId);
+        IsLoading = false;
+        StateHasChanged();
+    }
+
+    private void SelectUser(Guid? userId)
+    {
+        this.SelectedUserId = userId;
+    }
+
+    private string? GetPlayerName(Guid? userId)
+    {
+        return Players.FirstOrDefault(_ => _.UserId == userId)?.Name;
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(NewMessage))
+        {
+            await ChatService.SendMessageAsync(ConversationId, CurrentUserId, SelectedUserId, NewMessage);
+            NewMessage = "";
+            await LoadMessages();
+        }
+    }
+
+    private void StartAutoRefresh()
+    {
+        RefreshTimer = new Timer(5000);
+        RefreshTimer.Elapsed += async (_, _) => await InvokeAsync(LoadMessages);
+        RefreshTimer.AutoReset = true;
+        RefreshTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        RefreshTimer?.Dispose();
+    }
+}

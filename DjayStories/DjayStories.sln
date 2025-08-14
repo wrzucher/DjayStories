@@ -5,6 +5,8 @@ VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DjayStories.Web", "DjayStories.Web\DjayStories.Web.csproj", "{29A3300A-DEF9-4E15-B70E-8E40221DEBCF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DjayStories.Core", "DjayStories.Core\DjayStories.Core.csproj", "{58FA219D-F2D2-48B2-BF7C-0A6EA54492D0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{29A3300A-DEF9-4E15-B70E-8E40221DEBCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29A3300A-DEF9-4E15-B70E-8E40221DEBCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29A3300A-DEF9-4E15-B70E-8E40221DEBCF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58FA219D-F2D2-48B2-BF7C-0A6EA54492D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58FA219D-F2D2-48B2-BF7C-0A6EA54492D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58FA219D-F2D2-48B2-BF7C-0A6EA54492D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58FA219D-F2D2-48B2-BF7C-0A6EA54492D0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

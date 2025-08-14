@@ -1,0 +1,53 @@
+﻿@page "/conversations"
+@inject ChatContext Db
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@using System.Globalization
+@using Microsoft.EntityFrameworkCore
+
+<h3>Conversations</h3>
+
+@if (conversations == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (conversations.Count == 0)
+{
+    <p>No conversations found.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var conv in conversations)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>@(conv.Title ?? "Untitled Conversation")</strong><br />
+                    <small class="text-muted">
+                        Created @conv.CreatedAt.ToLocalTime().ToString("f", CultureInfo.CurrentCulture)
+                    </small>
+                </div>
+                <button class="btn btn-primary btn-sm" @onclick="@(_ =>
+                    GoToChat(conv.ConversationId))">
+                    Open Chat
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Conversation> conversations;
+
+    protected override async Task OnInitializedAsync()
+    {
+        conversations = await Db.Conversations
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+    }
+
+    void GoToChat(int conversationId)
+    {
+        Nav.NavigateTo($"/chats/{conversationId}");
+    }
+}
